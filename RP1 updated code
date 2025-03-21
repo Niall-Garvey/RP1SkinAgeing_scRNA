@@ -1,0 +1,45 @@
+import scanpy as sc
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load data
+adata = sc.read_h5ad(
+    "/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad",
+    backed='r'
+).to_memory()
+
+# Preprocess Data
+sc.pp.normalize_total(adata, target_sum=1e4)
+sc.pp.log1p(adata)
+
+# Identify Highly Variable Genes
+sc.pp.highly_variable_genes(adata, min_mean=0.1, max_mean=10, min_disp=0.5)
+adata = adata[:, adata.var['highly_variable']]
+sc.pl.highly_variable_genes(adata, show=True)
+
+# Cell Type Distribution Analysis
+plt.figure(figsize=(10, 6))
+sns.countplot(data=adata.obs, x='cell_type', hue='donor_age_group')
+plt.xticks(rotation=90)
+plt.title('Cell Type Distribution by Age Group')
+plt.show()
+
+# Pseudobulk Aggregation for Differential Expression
+sc.tl.pca(adata)
+sc.tl.rank_genes_groups(adata, 'cell_type', method='wilcoxon')
+sc.pl.rank_genes_groups(adata, n_genes=25, sharey=False)
+
+# UMAP Visualization
+sc.pp.neighbors(adata, n_neighbors=10, n_pcs=40)
+sc.tl.umap(adata)
+
+# Visualize by Key Features
+sc.pl.umap(adata, color=['donor_age_group'], title='UMAP by Age Group')
+sc.pl.umap(adata, color=['donor'], title='UMAP by Donor')
+sc.pl.umap(adata, color='cell_type', title='UMAP by Cell Type')
+sc.pl.umap(adata, color='doublet_classification', title='UMAP by Doublet Classification')
+sc.pl.umap(adata, color='percent_mito', title='UMAP by Mitochondrial Content')
+sc.pl.umap(adata, color='qc_pass', title='UMAP by QC Status')
+
+print("Full analysis completed successfully.")
