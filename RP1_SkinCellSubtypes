@@ -1,0 +1,156 @@
+(STACKED SKIN CELL SUBTYPE BAR PLOT)
+
+import scanpy as sc
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad")
+cell_type_data = adata.obs.copy()
+experiment_age_groups = {
+    'EXP001': '(HRX138216) 18 - Young', 'EXP002': '(HRX138217) 22 - Young', 'EXP003': '(HRX138218) 23 - Young',
+    'EXP004': '(HRX138219) 44 - Middle', 'EXP005': '(HRX138220) 47 - Middle', 'EXP006': '(HRX138221) 48 - Middle',
+    'EXP007': '(HRX138222) 70 - Older', 'EXP008': '(HRX138223) 73 - Older', 'EXP009': '(HRX138224) 76 - Older'
+}
+hrx_code_mapping = {
+    'HRX138216': 'EXP001', 'HRX138217': 'EXP002', 'HRX138218': 'EXP003',
+    'HRX138219': 'EXP004', 'HRX138220': 'EXP005', 'HRX138221': 'EXP006',
+    'HRX138222': 'EXP007', 'HRX138223': 'EXP008', 'HRX138224': 'EXP009'
+}
+cell_type_data['experiment_id'] = cell_type_data['experiment_id'].astype(str).str.strip()
+cell_type_data['HRX_Code'] = cell_type_data['experiment_id'].map(hrx_code_mapping)
+cell_type_data['Age Group'] = cell_type_data['HRX_Code'].map(experiment_age_groups)
+
+cell_type_data['Age Group'] = pd.Categorical(cell_type_data['Age Group'], categories=[
+    '(HRX138216) 18 - Young', '(HRX138217) 22 - Young', '(HRX138218) 23 - Young',
+    '(HRX138219) 44 - Middle', '(HRX138220) 47 - Middle', '(HRX138221) 48 - Middle',
+    '(HRX138222) 70 - Older', '(HRX138223) 73 - Older', '(HRX138224) 76 - Older'
+], ordered=True)
+cell_type_counts = cell_type_data.groupby(['HRX_Code', 'Celltypist:Fetal_Human_Skin:majority_voting']).size().unstack().fillna(0)
+total_cells_per_experiment = cell_type_counts.sum(axis=1)
+
+cell_type_percentages = cell_type_counts.div(total_cells_per_experiment, axis=0) * 100
+cell_type_percentages['label'] = cell_type_percentages.index.map(lambda x: experiment_age_groups.get(x, x))
+
+custom_cell_type_labels = {
+    'A_fs_KC': 'Keratinocytes',
+    'B_fs_Melanocyte': 'Melanocytes',
+    'D_fs_FB': 'Fibroblasts',
+    'E_fs_LE': 'Lupus Erythematosus',
+    'F_fs_VE': 'Vascular Endothelial',
+    'G_fs_Mast': 'Mast Cells',
+    'H_fs_NK': 'Natural Killer Cells',
+    'I_fs_ILC': 'Innate Lymphoid Cells',
+    'J_fs_LC': 'Langerhans Cells',
+    'K_fs_DC1': 'Dendritic Cell 1',
+    'L_fs_DC2': 'Dendritic Cell 2',
+    'M_fs_Macro': 'Macrophages',
+    'N_fs_pericyte': 'Pericytes'
+}
+
+cell_types = list(custom_cell_type_labels.values())
+colors = sns.color_palette("tab20", len(cell_types))
+
+
+plt.figure(figsize=(16, 8))
+ax = plt.gca()
+
+bottoms = np.zeros(len(cell_type_percentages))  # Initialize the bottom for stacking
+for i, cell_type in enumerate(cell_type_percentages.columns[:-1]):  # Exclude 'label' column
+    ax.bar(
+        cell_type_percentages.index, 
+        cell_type_percentages[cell_type], 
+        label=custom_cell_type_labels.get(cell_type, cell_type),  # Use custom labels for cell types
+        bottom=bottoms,
+        color=colors[i]  # Assign colors from the palette
+    )
+    bottoms += cell_type_percentages[cell_type]  # Update the bottoms for next stack
+
+plt.title('Skin Cell Subtypes Across Age Groups', fontsize=16)
+plt.xlabel('Age Groups', fontsize=14)  # Updated x-axis label
+plt.ylabel('Percentage Composition (%)', fontsize=14)
+ax.set_xticks(np.arange(len(cell_type_percentages)))  # Ensure correct number of ticks
+ax.set_xticklabels(cell_type_percentages['label'], rotation=45, ha='right')
+plt.legend(title='Skin Cell Subtypes', bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
+plt.subplots_adjust(top=0.9, bottom=0.15, left=0.1, right=0.75)
+plt.show()
+
+(UNSTACKED SKIN CELL SUBTYPE BAR PLOT) 
+
+import scanpy as sc
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad")
+cell_type_data = adata.obs.copy()
+
+experiment_age_groups = {
+    'EXP001': '(HRX138216) 18 - Young', 'EXP002': '(HRX138217) 22 - Young', 'EXP003': '(HRX138218) 23 - Young',
+    'EXP004': '(HRX138219) 44 - Middle', 'EXP005': '(HRX138220) 47 - Middle', 'EXP006': '(HRX138221) 48 - Middle',
+    'EXP007': '(HRX138222) 70 - Older', 'EXP008': '(HRX138223) 73 - Older', 'EXP009': '(HRX138224) 76 - Older'
+}
+hrx_code_mapping = {
+    'HRX138216': 'EXP001', 'HRX138217': 'EXP002', 'HRX138218': 'EXP003',
+    'HRX138219': 'EXP004', 'HRX138220': 'EXP005', 'HRX138221': 'EXP006',
+    'HRX138222': 'EXP007', 'HRX138223': 'EXP008', 'HRX138224': 'EXP009'
+}
+
+cell_type_data['experiment_id'] = cell_type_data['experiment_id'].astype(str).str.strip()
+cell_type_data['HRX_Code'] = cell_type_data['experiment_id'].map(hrx_code_mapping)
+cell_type_data['Age Group'] = cell_type_data['HRX_Code'].map(experiment_age_groups)
+cell_type_data['Age Group'] = pd.Categorical(cell_type_data['Age Group'], categories=[
+    '(HRX138216) 18 - Young', '(HRX138217) 22 - Young', '(HRX138218) 23 - Young',
+    '(HRX138219) 44 - Middle', '(HRX138220) 47 - Middle', '(HRX138221) 48 - Middle',
+    '(HRX138222) 70 - Older', '(HRX138223) 73 - Older', '(HRX138224) 76 - Older'
+], ordered=True)
+
+cell_type_counts = cell_type_data.groupby(['HRX_Code', 'Celltypist:Fetal_Human_Skin:majority_voting']).size().unstack().fillna(0)
+total_cells_per_experiment = cell_type_counts.sum(axis=1)
+cell_type_percentages = cell_type_counts.div(total_cells_per_experiment, axis=0) * 100
+cell_type_percentages['label'] = cell_type_percentages.index.map(lambda x: experiment_age_groups.get(x, x))
+
+custom_cell_type_labels = {
+    'A_fs_KC': 'Keratinocytes',
+    'B_fs_Melanocyte': 'Melanocytes',
+    'D_fs_FB': 'Fibroblasts',
+    'E_fs_LE': 'Lupus Erythematosus',
+    'F_fs_VE': 'Vascular Endothelial',
+    'G_fs_Mast': 'Mast Cells',
+    'H_fs_NK': 'Natural Killer Cells',
+    'I_fs_ILC': 'Innate Lymphoid Cells',
+    'J_fs_LC': 'Langerhans Cells',
+    'K_fs_DC1': 'Dendritic Cell 1',
+    'L_fs_DC2': 'Dendritic Cell 2',
+    'M_fs_Macro': 'Macrophages',
+    'N_fs_pericyte': 'Pericytes'
+}
+cell_types = list(custom_cell_type_labels.values())
+colors = sns.color_palette("tab20", len(cell_types))
+width = 4.0  # Doubled bar width
+spacing = 4.5  # Increased spacing to avoid overlap
+x = np.arange(len(cell_type_percentages)) * (len(cell_type_percentages.columns) - 1) * spacing
+plt.figure(figsize=(18, 9))
+ax = plt.gca()
+
+for i, cell_type in enumerate(cell_type_percentages.columns[:-1]):  # Exclude 'label' column
+    ax.bar(
+        x + i * width, 
+        cell_type_percentages[cell_type], 
+        width=width, 
+        label=custom_cell_type_labels.get(cell_type, cell_type),
+        color=colors[i],
+        edgecolor='black',
+        linewidth=0.8  # Thicker border for clear definition
+    )
+plt.title('Skin Cell Subtypes Across Age Groups', fontsize=16)
+plt.xlabel('Age Groups', fontsize=14)
+plt.ylabel('Percentage Composition (%)', fontsize=14)
+ax.set_xticks(x + ((len(cell_type_percentages.columns) - 2) * width) / 2)
+ax.set_xticklabels(cell_type_percentages['label'], rotation=45, ha='right')
+
+plt.legend(title='Skin Cell Subtypes', bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
+plt.subplots_adjust(top=0.9, bottom=0.15, left=0.1, right=0.75)
+plt.show()
