@@ -1,0 +1,183 @@
+# INDIVIDUAL DONOR SKIN CELL SUBTYPES DATA TABLE
+
+import pandas as pd
+import scanpy as sc
+
+adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad")
+donor_age_groups = {
+    'HRX138216': '18 yrs', 'HRX138217': '22 yrs', 'HRX138218': '23 yrs',
+    'HRX138219': '44 yrs', 'HRX138220': '47 yrs', 'HRX138221': '48 yrs',
+    'HRX138222': '70 yrs', 'HRX138223': '73 yrs', 'HRX138224': '76 yrs'
+}
+
+cell_type_mapping = {
+    'A_fs_KC': 'Keratinocytes',
+    'B_fs_Melanocyte': 'Melanocytes',
+    'D_fs_FB': 'Fibroblasts',
+    'E_fs_LE': 'Lupus Erythematosus',
+    'F_fs_VE': 'Vascular Endothelial',
+    'G_fs_Mast': 'Mast Cells',
+    'H_fs_NK': 'Natural Killer Cells',
+    'I_fs_ILC': 'Innate Lymphoid Cells',
+    'J_fs_LC': 'Langerhans Cells',
+    'K_fs_DC1': 'Dendritic Cell 1',
+    'L_fs_DC2': 'Dendritic Cell 2',
+    'M_fs_Macro': 'Macrophages',
+    'N_fs_pericyte': 'Pericytes'
+}
+
+donor_cell_type_counts = pd.DataFrame(index=cell_type_mapping.values(), columns=donor_age_groups.values())
+
+for donor, age in donor_age_groups.items():
+    counts = adata[adata.obs['experiment_id'] == donor].obs['Celltypist:Fetal_Human_Skin:majority_voting'].map(cell_type_mapping).value_counts()
+    donor_cell_type_counts[age] = counts 
+
+donor_cell_type_counts = donor_cell_type_counts.fillna(0).astype(int)
+
+def print_neat_table(df):
+    cell_type_width = 22 
+    count_width = 7      
+
+    title = "Skin Cell Subtypes of Individual Donors"
+    
+    table_width = len(df.columns) * count_width + cell_type_width + 3 * (len(df.columns) - 1)  # Add space between columns
+    title_centered = title.center(table_width)  
+
+    print("\n" + title_centered)  
+
+    print("=" * table_width)
+
+    header = "Cell Type".ljust(cell_type_width) + " | " + " | ".join(col.rjust(count_width) for col in df.columns)
+    separator = "-" * table_width  # Separator line matches the full width of the table
+
+    print(separator)
+    print(header)
+    print(separator)
+
+    for idx, row in df.iterrows():
+        row_str = idx.ljust(cell_type_width) + " | " + " | ".join(f"{val:>{count_width}}" for val in row)
+        print(row_str)
+
+    print(separator)
+
+print_neat_table(donor_cell_type_counts)
+
+# AGE GROUPED SKIN CELL SUBTYPES DATA TABLE
+
+def print_combined_table(df):
+    cell_type_width = 30  
+    count_width = 25     
+
+    df.columns = ["Young(18,22,23 yrs)", "Middle-aged(44,47,48 yrs)", "Older(70,73,76 yrs)"]
+
+    title = "Skin Cell Subtypes Across Donor Age Groups"
+    table_width = len(df.columns) * count_width + cell_type_width + 6  
+    print("\n" + title.center(table_width))
+    print("=" * table_width)
+
+    # Header with consistent spacing
+    header = "Cell Type".ljust(cell_type_width) + " | " + " | ".join(col.center(count_width) for col in df.columns)
+    separator = "-" * table_width
+
+    print(separator)
+    print(header)
+    print(separator)
+
+    for idx, row in df.iterrows():
+        row_str = idx.ljust(cell_type_width) + " | " + " | ".join(f"{val:>{count_width}}" for val in row)
+        print(row_str)
+
+print_combined_table(donor_cell_type_counts)
+
+# AGE GROUPED SKIN CELL SUBTYPES UMAPs
+
+import scanpy as sc
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad")
+
+sc.pp.neighbors(adata, n_neighbors=10, n_pcs=40)
+sc.tl.umap(adata)
+
+experiment_age_groups = {
+    'HRX138216': 'Young (18, 22, 23)',
+    'HRX138217': 'Young (18, 22, 23)',  
+    'HRX138218': 'Young (18, 22, 23)',  
+    'HRX138219': 'Middle (44, 47, 48)',
+    'HRX138220': 'Middle (44, 47, 48)',  
+    'HRX138221': 'Middle (44, 47, 48)',  
+    'HRX138222': 'Older (70, 73, 76)',   
+    'HRX138223': 'Older (70, 73, 76)',  
+    'HRX138224': 'Older (70, 73, 76)'   
+}
+
+adata.obs['Age Group'] = adata.obs['experiment_id'].map(experiment_age_groups)
+
+cell_type_mapping = {
+    'A_fs_KC': 'Keratinocytes',
+    'B_fs_Melanocyte': 'Melanocytes',
+    'D_fs_FB': 'Fibroblasts',
+    'E_fs_LE': 'Lupus Erythematosus',
+    'F_fs_VE': 'Vascular Endothelial',
+    'G_fs_Mast': 'Mast Cells',
+    'H_fs_NK': 'Natural Killer Cells',
+    'I_fs_ILC': 'Innate Lymphoid Cells',
+    'J_fs_LC': 'Langerhans Cells',
+    'K_fs_DC1': 'Dendritic Cell 1',
+    'L_fs_DC2': 'Dendritic Cell 2',
+    'M_fs_Macro': 'Macrophages',
+    'N_fs_pericyte': 'Pericytes'
+}
+
+cell_type_col = 'Celltypist:Fetal_Human_Skin:majority_voting'
+adata.obs[cell_type_col] = adata.obs[cell_type_col].astype(str) 
+mapped_values = adata.obs[cell_type_col].map(cell_type_mapping).fillna(adata.obs[cell_type_col])
+
+adata.obs['Mapped Cell Type'] = pd.Categorical(mapped_values, categories=cell_type_mapping.values(), ordered=True)
+
+colors = sns.color_palette("tab20", len(cell_type_mapping))  
+cell_type_colors = dict(zip(cell_type_mapping.values(), colors))  
+
+adata.uns['Mapped Cell Type_colors'] = [cell_type_colors[ct] for ct in cell_type_mapping.values()]
+
+age_groups = ['Young (18, 22, 23)', 'Middle (44, 47, 48)', 'Older (70, 73, 76)']
+titles = [
+    'Skin Cell Subtypes UMAP - Young (18,22,23 yrs)',
+    'Skin Cell Subtypes UMAP - Middle-aged (44,47,48 yrs)',
+    'Skin Cell Subtypes UMAP - Older (70,73,76 yrs)'
+]
+panel_labels = ['A', 'B', 'C']  
+
+fig, axes = plt.subplots(1, 3, figsize=(24, 6))  
+
+for ax, age_group, title, label in zip(axes, age_groups, titles, panel_labels):
+    # Plot UMAP
+    sc.pl.umap(
+        adata[adata.obs['Age Group'] == age_group],
+        color='Mapped Cell Type',
+        title=title,
+        legend_loc='right margin', 
+        size=80,
+        ax=ax,
+        show=False  
+    )
+
+    for spine in ax.spines.values():
+        spine.set_edgecolor('black')  
+        spine.set_linewidth(2)  
+
+    ax.text(
+        0.5, -0.25, label, transform=ax.transAxes, fontsize=20, fontweight='bold', va='top', ha='center'
+    )
+
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+                                                                  
+                                                                  
