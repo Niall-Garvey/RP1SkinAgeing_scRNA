@@ -9,9 +9,9 @@ import numpy as np
 adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad")
 cell_type_data = adata.obs.copy()
 experiment_age_groups = {
-    'EXP001': '(HRX138216) 18 - Young', 'EXP002': '(HRX138217) 22 - Young', 'EXP003': '(HRX138218) 23 - Young',
-    'EXP004': '(HRX138219) 44 - Middle', 'EXP005': '(HRX138220) 47 - Middle', 'EXP006': '(HRX138221) 48 - Middle',
-    'EXP007': '(HRX138222) 70 - Older', 'EXP008': '(HRX138223) 73 - Older', 'EXP009': '(HRX138224) 76 - Older'
+   'EXP001': '(HRX138216) 18 yrs - Young', 'EXP002': '(HRX138217) 22 yrs - Young', 'EXP003': '(HRX138218) 23 yrs - Young',
+    'EXP004': '(HRX138219) 44 yrs - Middle-aged', 'EXP005': '(HRX138220) 47 yrs - Middle-aged', 'EXP006': '(HRX138221) 48 yrs - Middle-aged',
+    'EXP007': '(HRX138222) 70 yrs - Older', 'EXP008': '(HRX138223) 73 yrs - Older', 'EXP009': '(HRX138224) 76 yrs - Older'
 }
 hrx_code_mapping = {
     'HRX138216': 'EXP001', 'HRX138217': 'EXP002', 'HRX138218': 'EXP003',
@@ -23,9 +23,9 @@ cell_type_data['HRX_Code'] = cell_type_data['experiment_id'].map(hrx_code_mappin
 cell_type_data['Age Group'] = cell_type_data['HRX_Code'].map(experiment_age_groups)
 
 cell_type_data['Age Group'] = pd.Categorical(cell_type_data['Age Group'], categories=[
-    '(HRX138216) 18 - Young', '(HRX138217) 22 - Young', '(HRX138218) 23 - Young',
-    '(HRX138219) 44 - Middle', '(HRX138220) 47 - Middle', '(HRX138221) 48 - Middle',
-    '(HRX138222) 70 - Older', '(HRX138223) 73 - Older', '(HRX138224) 76 - Older'
+    '(HRX138216) 18 yrs - Young', '(HRX138217) 22 yrs - Young', '(HRX138218) 23 yrs - Young',
+    '(HRX138219) 44 yrs - Middle-aged', '(HRX138220) 47 yrs - Middle-aged', '(HRX138221) 48 yrs - Middle-aged',
+    '(HRX138222) 70 yrs - Older', '(HRX138223) 73 yrs - Older', '(HRX138224) 76 yrs - Older'
 ], ordered=True)
 cell_type_counts = cell_type_data.groupby(['HRX_Code', 'Celltypist:Fetal_Human_Skin:majority_voting']).size().unstack().fillna(0)
 total_cells_per_experiment = cell_type_counts.sum(axis=1)
@@ -88,9 +88,9 @@ adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_result
 cell_type_data = adata.obs.copy()
 
 experiment_age_groups = {
-    'EXP001': '(HRX138216) 18 - Young', 'EXP002': '(HRX138217) 22 - Young', 'EXP003': '(HRX138218) 23 - Young',
-    'EXP004': '(HRX138219) 44 - Middle', 'EXP005': '(HRX138220) 47 - Middle', 'EXP006': '(HRX138221) 48 - Middle',
-    'EXP007': '(HRX138222) 70 - Older', 'EXP008': '(HRX138223) 73 - Older', 'EXP009': '(HRX138224) 76 - Older'
+    'EXP001': '(HRX138216) 18 yrs - Young', 'EXP002': '(HRX138217) 22 yrs - Young', 'EXP003': '(HRX138218) 23 yrs - Young',
+    'EXP004': '(HRX138219) 44 yrs - Middle-aged', 'EXP005': '(HRX138220) 47 yrs - Middle-aged', 'EXP006': '(HRX138221) 48 yrs - Middle-aged',
+    'EXP007': '(HRX138222) 70 yrs - Older', 'EXP008': '(HRX138223) 73 yrs - Older', 'EXP009': '(HRX138224) 76 yrs - Older'
 }
 hrx_code_mapping = {
     'HRX138216': 'EXP001', 'HRX138217': 'EXP002', 'HRX138218': 'EXP003',
@@ -102,9 +102,9 @@ cell_type_data['experiment_id'] = cell_type_data['experiment_id'].astype(str).st
 cell_type_data['HRX_Code'] = cell_type_data['experiment_id'].map(hrx_code_mapping)
 cell_type_data['Age Group'] = cell_type_data['HRX_Code'].map(experiment_age_groups)
 cell_type_data['Age Group'] = pd.Categorical(cell_type_data['Age Group'], categories=[
-    '(HRX138216) 18 - Young', '(HRX138217) 22 - Young', '(HRX138218) 23 - Young',
-    '(HRX138219) 44 - Middle', '(HRX138220) 47 - Middle', '(HRX138221) 48 - Middle',
-    '(HRX138222) 70 - Older', '(HRX138223) 73 - Older', '(HRX138224) 76 - Older'
+    '(HRX138216) 18 yrs - Young', '(HRX138217) 22 yrs - Young', '(HRX138218) 23 yrs - Young',
+    '(HRX138219) 44 yrs - Middle-aged', '(HRX138220) 47 yrs - Middle-aged', '(HRX138221) 48 yrs - Middle-aged',
+    '(HRX138222) 70 yrs - Older', '(HRX138223) 73 yrs - Older', '(HRX138224) 76 yrs - Older'
 ], ordered=True)
 
 cell_type_counts = cell_type_data.groupby(['HRX_Code', 'Celltypist:Fetal_Human_Skin:majority_voting']).size().unstack().fillna(0)
