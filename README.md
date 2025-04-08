@@ -2,7 +2,7 @@
 
 # Research Project 1: Characterizing Skin Ageing Mechanisms through Multi-Omics Approaches Using scRNA-seq Data
 ### Objective:
-The objective of this research project is to analyze an existing scRNA-seq dataset to derive novel insights. The project focuses on skin ageing mechanisms using  **single-cell RNA sequencing (scRNA-seq)** 
+The objective of this research project is to analyze an existing scRNA-seq dataset from this Human skin cell atlas dataset - https://ngdc.cncb.ac.cn/aging/landscape?project=Human_Skin to derive novel insights. The project focuses on skin ageing mechanisms using  **single-cell RNA sequencing (scRNA-seq)** 
 
 ### Project Tasks:
 1. **Data Analysis**:
