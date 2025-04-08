@@ -9,7 +9,7 @@ The objective of this research project is to analyze an existing scRNA-seq datas
     - Analyze scRNA-seq data using the **Yascp pipeline** (GitHub repository: [wtsi-hgi/yascp](https://github.com/wtsi-hgi/yascp)).
 
 2. **Key Areas of Focus**:
-    - **Single-cell RNA-seq (scRNA-seq)**: Identifying cell type-specific gene expression patterns, protein modifications, and potential biomarkers linked to ageing.
+    - **Single-cell RNA-seq (scRNA-seq)**: Identifying cell type-specific gene expression patterns and potential biomarkers linked to ageing.
 
 ### CSF3 Resources (HPC For Project) :
 - **CSF3 Support Email**: [its-ri-team@manchester.ac.uk](mailto:its-ri-team@manchester.ac.uk)
