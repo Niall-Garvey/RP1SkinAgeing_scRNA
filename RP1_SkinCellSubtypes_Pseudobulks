@@ -1,10 +1,11 @@
 import scanpy as sc
 import pandas as pd
 import re
+import os
 
 normalised_adata = sc.read_h5ad(filename='/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/normalized_adata.h5ad')
 adata = normalised_adata
-adata.obs['adata_phenotype_id'] = adata.obs['experiment_id'].astype('str')+'_'+adata.obs['donor_id'].astype('str')
+adata.obs['adata_phenotype_id'] = adata.obs['experiment_id'].astype('str') + '_' + adata.obs['donor_id'].astype('str')
 
 method = 'dMean'
 agg_columns = ['Celltypist:Fetal_Human_Skin:majority_voting']
@@ -12,6 +13,9 @@ cell_percentage_threshold = 0
 n_individ = 1
 n_cells = 4
 gt_id_column = 'adata_phenotype_id'
+
+output_dir = '/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/'
+os.makedirs(output_dir, exist_ok=True)
 
 if method == 'dMean':
     if 'log1p_cp10k' in adata.layers:
@@ -36,30 +40,27 @@ for agg_col in agg_columns:
         aggregated_data = pd.DataFrame()
         print(type)
         print("----------")
-        
+
         modified_agg_col = re.sub(r'[^a-zA-Z0-9]', '_', type)
         adata.strings_to_categoricals()
 
-        # Focus on keratinocytes
         cell_adata = adata[adata.obs[agg_col] == type]
-        cell_index = set(adata[adata.obs[agg_col] == type].obs.index)
+        cell_index = set(cell_adata.obs.index)
 
         if cell_percentage_threshold > 0:
-            # Calculate the proportion of cells expressing each gene
-            cell_counts = (cell_adata.X > 0).sum(axis=0).A1  # .A1 converts sparse matrix to a flat array
+            cell_counts = (cell_adata.X > 0).sum(axis=0).A1
             total_cells = cell_adata.shape[0]
             cell_expression_proportion = cell_counts / total_cells
-            # Apply the filter based on cell-level expression
             keep_genes = cell_expression_proportion >= cell_percentage_threshold
             indexes = cell_adata.var.index[keep_genes].tolist()
         else:
             indexes = list(cell_adata.var.index)
 
-        if len(cell_adata.obs['adata_phenotype_id'].unique()) >= n_individ:
+        if len(cell_adata.obs[gt_id_column].unique()) >= n_individ:
             aggregated_data_pre = pd.DataFrame()
             genotype_phenotype_mapping_pre = []
-            for individual_1 in cell_adata.obs['adata_phenotype_id'].unique():
-                donot_index = set(adata[adata.obs['adata_phenotype_id'] == individual_1].obs.index)
+            for individual_1 in cell_adata.obs[gt_id_column].unique():
+                donot_index = set(adata[adata.obs[gt_id_column] == individual_1].obs.index)
                 cell_donor_index = set(cell_index.intersection(donot_index))
                 individual_1_adata = adata[list(cell_donor_index), indexes]
 
@@ -67,22 +68,22 @@ for agg_col in agg_columns:
                     Genotype = individual_1_adata.obs[gt_id_column].unique()[0]
                     if method == 'dSum':
                         f = individual_1_adata.to_df()
-                        data_aggregated_for_cell_and_individal = pd.DataFrame(f.sum(axis=0))
-                        data_aggregated_for_cell_and_individal.set_index(f.columns, inplace=True)
+                        data_aggregated = pd.DataFrame(f.sum(axis=0))
+                        data_aggregated.set_index(f.columns, inplace=True)
                         type2 = f"{agg_col}-{type}-{method}"
                     elif method == 'dMean':
                         f = individual_1_adata.to_df()
-                        data_aggregated_for_cell_and_individal = pd.DataFrame(f.mean(axis=0))
-                        data_aggregated_for_cell_and_individal.set_index(f.columns, inplace=True)
+                        data_aggregated = pd.DataFrame(f.mean(axis=0))
+                        data_aggregated.set_index(f.columns, inplace=True)
                         type2 = f"{agg_col}-{type}-{method}"
                     else:
-                        print('Wrong method specified, please use dMean or dSum or both as a comma separated string dMean,dSum')
+                        print('Wrong method specified, please use dMean or dSum')
                         break
-                    
+
                     Phenotype = f"{type2}_{individual_1}".replace(' ', '_')
                     type2 = type2.replace(' ', '_')
-                    data_aggregated_for_cell_and_individal.rename(columns={0: Phenotype}, inplace=True)
-                    aggregated_data_pre = pd.concat([aggregated_data_pre, data_aggregated_for_cell_and_individal], axis=1)
+                    data_aggregated.rename(columns={0: Phenotype}, inplace=True)
+                    aggregated_data_pre = pd.concat([aggregated_data_pre, data_aggregated], axis=1)
                     genotype_phenotype_mapping_pre.append({'Genotype': Genotype, 'RNA': Phenotype, 'Sample_Category': type2})
 
             if len(aggregated_data_pre.columns) >= n_individ:
@@ -92,12 +93,18 @@ for agg_col in agg_columns:
         genotype_phenotype_mapping = pd.DataFrame(genotype_phenotype_mapping)
 
         if len(genotype_phenotype_mapping) >= 1:
-            genotype_phenotype_mapping.to_csv(f'{method}__{modified_agg_col}___genotype_phenotype_mapping.tsv', sep='\t', index=False)
-            aggregated_data.to_csv(f'{method}__{modified_agg_col}___phenotype_file.tsv', sep='\t', index=True)
+            mapping_outfile = os.path.join(output_dir, f'{method}__{modified_agg_col}___genotype_phenotype_mapping.tsv')
+            data_outfile = os.path.join(output_dir, f'{method}__{modified_agg_col}___phenotype_file.tsv')
+            
+            genotype_phenotype_mapping.to_csv(mapping_outfile, sep='\t', index=False)
+            aggregated_data.to_csv(data_outfile, sep='\t', index=True)
 
-            print("\nFirst few rows of genotype_phenotype_mapping:")
+            print("\nSaved files:")
+            print(mapping_outfile)
+            print(data_outfile)
+            print("\nPreview of mapping:")
             print(genotype_phenotype_mapping.head())
-            print("\nFirst few rows of aggregated_data:")
+            print("\nPreview of aggregated data:")
             print(aggregated_data.head())
 
 print('Successfully Finished')
