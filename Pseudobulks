@@ -1,0 +1,89 @@
+# Pseudobulk and Metadata Keratinoyctes
+
+import scanpy as sc
+import pandas as pd
+import numpy as np
+
+adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/normalized_adata.h5ad")
+
+keratinocytes = adata[adata.obs["Celltypist:Fetal_Human_Skin:majority_voting"] == "A_fs_KC"]
+
+pseudobulks = {}
+for donor in keratinocytes.obs["donor_id"].unique():
+    donor_subset = keratinocytes[keratinocytes.obs["donor_id"] == donor]
+    summed_counts = np.asarray(donor_subset.X.sum(axis=0)).flatten()
+    pseudobulks[donor] = pd.Series(summed_counts, index=donor_subset.var_names)
+
+pseudobulk_df = pd.DataFrame(pseudobulks)
+pseudobulk_df.to_csv("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/keratinocyte_pseudobulk_counts.tsv", sep="\t")
+
+
+meta = pd.DataFrame({
+    "donor_id": ["HRX138216", "HRX138217", "HRX138218", "HRX138219", "HRX138220", "HRX138221", "HRX138222", "HRX138223", "HRX138224"],
+    "age_group": ["Young", "Young", "Young", "Middle", "Middle", "Middle", "Older", "Older", "Older"]
+})
+meta.to_csv("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/keratinocyte_metadata.tsv", sep="\t", index=False)
+
+
+# Metadata Melanocytes + Fibroblasts
+
+import pandas as pd
+import numpy as np
+
+
+meta_melanocyte = pd.DataFrame({
+    "donor_id": ["HRX138216", "HRX138217", "HRX138218", "HRX138219", "HRX138220", "HRX138221", "HRX138222", "HRX138223", "HRX138224"],
+    "age_group": ["Young", "Young", "Young", "Middle", "Middle", "Middle", "Older", "Older", "Older"]
+})
+
+meta_fibroblast = pd.DataFrame({
+    "donor_id": ["HRX138216", "HRX138217", "HRX138218", "HRX138219", "HRX138220", "HRX138221", "HRX138222", "HRX138223", "HRX138224"],
+    "age_group": ["Young", "Young", "Young", "Middle", "Middle", "Middle", "Older", "Older", "Older"]
+})
+
+
+meta_melanocyte.to_csv("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/melanocyte_metadata.tsv", sep="\t", index=False)
+meta_fibroblast.to_csv("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/fibroblast_metadata.tsv", sep="\t", index=False)
+
+# Pseduobulks Melanocytes and Fibroblasts
+
+import scanpy as sc
+import pandas as pd
+import numpy as np
+
+
+adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/normalized_adata.h5ad")
+
+
+melanocytes = adata[adata.obs["Celltypist:Fetal_Human_Skin:majority_voting"] == "A_fs_Mel"]
+fibroblasts = adata[adata.obs["Celltypist:Fetal_Human_Skin:majority_voting"] == "A_fs_Fib"]
+
+def aggregate_pseudobulk(cell_type_adata, output_filename):
+    pseudobulks = {}
+    for donor in cell_type_adata.obs["donor_id"].unique():
+        donor_subset = cell_type_adata[cell_type_adata.obs["donor_id"] == donor]
+        summed_counts = np.asarray(donor_subset.X.sum(axis=0)).flatten()
+        pseudobulks[donor] = pd.Series(summed_counts, index=donor_subset.var_names)
+
+    pseudobulk_df = pd.DataFrame(pseudobulks)
+    pseudobulk_df.to_csv(output_filename, sep="\t")
+
+
+aggregate_pseudobulk(melanocytes, "/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/melanocyte_pseudobulk_counts.tsv")
+aggregate_pseudobulk(fibroblasts, "/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/fibroblast_pseudobulk_counts.tsv")
+
+
+meta_melanocyte = pd.DataFrame({
+    "donor_id": ["HRX138216", "HRX138217", "HRX138218", "HRX138219", "HRX138220", "HRX138221", "HRX138222", "HRX138223", "HRX138224"],
+    "age_group": ["Young", "Young", "Young", "Middle", "Middle", "Middle", "Older", "Older", "Older"]
+})
+
+meta_fibroblast = pd.DataFrame({
+    "donor_id": ["HRX138216", "HRX138217", "HRX138218", "HRX138219", "HRX138220", "HRX138221", "HRX138222", "HRX138223", "HRX138224"],
+    "age_group": ["Young", "Young", "Young", "Middle", "Middle", "Middle", "Older", "Older", "Older"]
+})
+
+
+meta_melanocyte.to_csv("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/melanocyte_metadata.tsv", sep="\t", index=False)
+meta_fibroblast.to_csv("/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/fibroblast_metadata.tsv", sep="\t", index=False)
+
