@@ -1,0 +1,108 @@
+# Keratinocyte DF in edgeR
+
+#!/usr/bin/env Rscript
+
+library(edgeR)
+library(ggplot2)
+
+# === INPUT FILE ===
+counts_file <- "dMean__A_fs_KC___phenotype_file.tsv"
+
+# === READ DATA ===
+counts <- read.delim(counts_file, row.names = 1, check.names = FALSE)
+
+# === CLEAN COLUMN NAMES ===
+colnames(counts) <- gsub(".*(HRX\\d+_donor).*", "\\1", colnames(counts))
+
+# === DEFINE CONDITION BASED ON DONOR ID ===
+donor_conditions <- c(
+  'HRX138216_donor' = "Young",
+  'HRX138217_donor' = "Young",
+  'HRX138218_donor' = "Young",
+  'HRX138219_donor' = "Middle-aged",
+  'HRX138220_donor' = "Middle-aged",
+  'HRX138221_donor' = "Middle-aged",
+  'HRX138222_donor' = "Older",
+  'HRX138223_donor' = "Older",
+  'HRX138224_donor' = "Older"
+)
+
+# Filter counts for valid donors
+valid_donors <- intersect(colnames(counts), names(donor_conditions))
+counts <- counts[, valid_donors]
+
+# Use syntactically valid factor labels directly
+condition <- factor(
+  donor_conditions[valid_donors],
+  levels = c("Young", "Middle-aged", "Older"),
+  labels = c("Young", "Middle_aged", "Older")  # <-- fix here
+)
+
+# === BUILD DGEList OBJECT ===
+sample_info <- data.frame(row.names = valid_donors, condition = condition)
+y <- DGEList(counts = counts, group = sample_info$condition)
+
+# === NORMALIZE ===
+y <- calcNormFactors(y)
+
+# === DESIGN MATRIX & DISPERSION ===
+design <- model.matrix(~0 + condition, data = sample_info)
+colnames(design) <- levels(condition)
+y <- estimateDisp(y, design)
+
+# === FIT MODEL ===
+fit <- glmQLFit(y, design)
+
+# === CONTRASTS ===
+contrast_Mid_vs_Young <- makeContrasts(Middle_aged - Young, levels = design)
+contrast_Old_vs_Young <- makeContrasts(Older - Young, levels = design)
+contrast_Old_vs_Mid   <- makeContrasts(Older - Middle_aged, levels = design)
+
+# === FUNCTION TO GENERATE VOLCANO PLOTS ONLY ===
+plot_volcano <- function(fit, contrast, contrast_name) {
+  res <- glmQLFTest(fit, contrast = contrast)
+  res_table <- topTags(res, n = Inf)$table
+
+  # Add a column to distinguish significant genes
+  res_table$significant <- ifelse(res_table$FDR < 0.05, "Significant", "Not Significant")
+
+  p <- ggplot(res_table, aes(x = logFC, y = -log10(FDR), color = significant)) +
+    geom_point(alpha = 0.5) +
+    scale_color_manual(values = c("Significant" = "red", "Not Significant" = "gray")) +  # Color significant genes red
+    theme_minimal() +
+    labs(
+      title = paste("Volcano Plot: Keratinocytes -", contrast_name),
+      x = "Log2 Fold Change",
+      y = "-Log10 FDR"
+    ) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red")
+
+  ggsave(paste0("volcano_", contrast_name, ".png"), plot = p, width = 8, height = 6, dpi = 300)
+
+  # Return result table for significant genes
+  return(res_table)
+}
+
+# === GENERATE VOLCANO PLOTS AND GET SIGNIFICANT GENE COUNTS ===
+res_mid_young <- plot_volcano(fit, contrast_Mid_vs_Young, "Middle_vs_Young")
+res_old_young <- plot_volcano(fit, contrast_Old_vs_Young, "Older_vs_Young")
+res_old_mid   <- plot_volcano(fit, contrast_Old_vs_Mid, "Older_vs_Middle")
+
+# === PRINT SIGNIFICANT GENE COUNTS TO CONSOLE ===
+cat("Keratinocyte Significant genes (FDR < 0.05):\n")
+cat("Middle vs Young:", sum(res_mid_young$FDR < 0.05), "\n")
+cat("Older vs Young:", sum(res_old_young$FDR < 0.05), "\n")
+cat("Older vs Middle:", sum(res_old_mid$FDR < 0.05), "\n")
+
+# === PRINT NAMES OF SIGNIFICANT GENES ===
+cat("\nSignificant genes for Middle vs Young (FDR < 0.05):\n")
+significant_mid_young <- res_mid_young[res_mid_young$FDR < 0.05, ]
+print(rownames(significant_mid_young))
+
+cat("\nSignificant genes for Older vs Young (FDR < 0.05):\n")
+significant_old_young <- res_old_young[res_old_young$FDR < 0.05, ]
+print(rownames(significant_old_young))
+
+cat("\nSignificant genes for Older vs Middle (FDR < 0.05):\n")
+significant_old_mid <- res_old_mid[res_old_mid$FDR < 0.05, ]
+print(rownames(significant_old_mid))
