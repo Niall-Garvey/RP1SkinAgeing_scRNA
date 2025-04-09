@@ -1,3 +1,31 @@
+# NORMALISATION OF SKIN CELL SUBTYPES BEFORE PSEUDOBULK
+
+import scanpy as sc
+import numpy as np
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+# Define file paths
+h5ad_path = "/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad"
+output_path = "/mnt/bmh01-rds/Eckersley_Lab/NiallGarvey/normalized_adata.h5ad"
+
+# Load AnnData object
+adata = sc.read_h5ad(h5ad_path)
+
+# Perform total-count normalization (counts per 10,000)
+sc.pp.normalize_total(adata, target_sum=1e4)
+
+# Log1p transformation
+sc.pp.log1p(adata)
+
+# Save the normalized AnnData object to your personal directory
+adata.write(output_path)
+
+print(f"Normalization complete. Saved as: {output_path}")
+
+# PSEUDOBULK OF SKIN CELL SUBTYPES
+
 import scanpy as sc
 import pandas as pd
 import re
