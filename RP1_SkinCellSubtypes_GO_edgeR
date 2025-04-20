@@ -1,0 +1,97 @@
+# KERATINOCYTES: GENE ONTOLOGY ENRICHMENT ANALYSIS BAR PLOTS
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(dplyr)
+library(tidyr)
+library(UpSetR)
+library(ggplot2)  # For customizing plots
+library(grid)     # For adding text grobs (e.g., bold A, B, C)
+
+degs <- read.csv("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/KC_DEGs.csv")
+
+cat("Number of rows in DEGs data:", nrow(degs), "\n")
+
+# Split comparisons
+kc_middle_vs_young <- subset(degs, comparison == "Middle_vs_Young" & PValue < 0.05)
+kc_older_vs_middle <- subset(degs, comparison == "Older_vs_Middle" & PValue < 0.05)
+kc_older_vs_young  <- subset(degs, comparison == "Older_vs_Young"  & PValue < 0.05)
+
+cat("Middle vs Young:", nrow(kc_middle_vs_young), "\n")
+cat("Older vs Middle:", nrow(kc_older_vs_middle), "\n")
+cat("Older vs Young:", nrow(kc_older_vs_young), "\n")
+
+# Gene conversion function
+convert_to_entrez <- function(gene_df) {
+  gene_ids <- unique(gene_df$X)
+  mapped <- bitr(gene_ids, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+  cat("Mapped:", nrow(mapped), "\n")
+  return(mapped$ENTREZID)
+}
+
+# Convert gene IDs for KC data
+entrez_kc_middle_vs_young <- convert_to_entrez(kc_middle_vs_young)
+entrez_kc_older_vs_middle <- convert_to_entrez(kc_older_vs_middle)
+entrez_kc_older_vs_young  <- convert_to_entrez(kc_older_vs_young)
+
+# Enrichment function (safe)
+go_enrich <- function(entrez_ids) {
+  if (length(entrez_ids) == 0) return(NULL)
+  enrichGO(gene = entrez_ids,
+           OrgDb = org.Hs.eg.db,
+           keyType = "ENTREZID",
+           ont = "BP",
+           pAdjustMethod = "BH",
+           qvalueCutoff = 0.05,
+           readable = TRUE)
+}
+
+# Run GO enrichment for KC data
+go_kc_middle_vs_young <- go_enrich(entrez_kc_middle_vs_young)
+go_kc_older_vs_middle <- go_enrich(entrez_kc_older_vs_middle)
+go_kc_older_vs_young  <- go_enrich(entrez_kc_older_vs_young)
+
+# Improved plot function with larger plot area, wrapped labels, and bold subplot tag
+safe_plot <- function(go_obj, comparison_name, tag_letter) {
+  if (!is.null(go_obj) && nrow(go_obj@result) > 0) {
+    p <- barplot(go_obj, 
+                 showCategory = 10, 
+                 title = paste("Keratinocyte:", comparison_name))
+    
+    p <- p + theme(
+      axis.text.y = element_text(size = 6),
+      axis.text.x = element_text(size = 6, angle = 45, hjust = 1),
+      plot.title = element_text(size = 10, face = "bold"),
+      plot.margin = margin(10, 10, 10, 20)
+    )
+    
+    print(p)
+    
+    # Add bold subplot label (A, B, C)
+    grid.text(label = tag_letter, 
+              x = unit(0.05, "npc"), 
+              y = unit(0.95, "npc"), 
+              gp = gpar(fontface = "bold", fontsize = 14))
+    
+  } else {
+    cat("🚫 Skipping plot for", comparison_name, "\n")
+  }
+}
+
+# Plot results for keratinocytes with labels A, B, C
+safe_plot(go_kc_middle_vs_young, "Middle vs Young", "A")
+safe_plot(go_kc_older_vs_middle, "Older vs Middle", "B")
+safe_plot(go_kc_older_vs_young, "Older vs Young", "C")
+
+# Optionally: UpSet plot of overlapping gene sets for keratinocytes
+gene_lists <- list(
+  Middle_vs_Young = entrez_kc_middle_vs_young,
+  Older_vs_Middle = entrez_kc_older_vs_middle,
+  Older_vs_Young  = entrez_kc_older_vs_young
+)
+
+if (any(sapply(gene_lists, length) > 0)) {
+  upset(fromList(gene_lists), order.by = "freq", sets.bar.color = "#E69F00")
+} else {
+  cat("🚫 Not enough genes for UpSet plot\n")
+}
