@@ -83,3 +83,4 @@ for ax, age_group, title, label in zip(axes, age_groups, titles, panel_labels):
 
 plt.tight_layout()
 plt.show()
+
