@@ -1,9 +1,10 @@
-# INDIVIDUAL DONOR SKIN CELL SUBTYPES DATA TABLE
+# INDIVIDUAL DONOR SKIN CELL SUBTYPES DATA TABLE & AGE GROUPED SKIN CELL SUBTYPES DATA TABLE
 
 import pandas as pd
 import scanpy as sc
 
 adata = sc.read_h5ad("/mnt/bmh01-rds/Eckersley_Lab/MatissOzols/skin_scrna_results/handover/merged_h5ad/4.outlier_filtered_adata.h5ad")
+
 donor_age_groups = {
     'HRX138216': '18 yrs', 'HRX138217': '22 yrs', 'HRX138218': '23 yrs',
     'HRX138219': '44 yrs', 'HRX138220': '47 yrs', 'HRX138221': '48 yrs',
@@ -22,33 +23,75 @@ cell_type_mapping = {
     'J_fs_LC': 'Langerhans Cells',
     'K_fs_DC1': 'Dendritic Cell 1',
     'L_fs_DC2': 'Dendritic Cell 2',
-    'M_fs_Macro': 'Macrophages',
-    'N_fs_pericyte': 'Pericytes'
+    'M_fs_Macro': 'Macrophages',  
+    'N_fs_pericyte': 'Pericytes'  
 }
 
 donor_cell_type_counts = pd.DataFrame(index=cell_type_mapping.values(), columns=donor_age_groups.values())
 
 for donor, age in donor_age_groups.items():
-    counts = adata[adata.obs['experiment_id'] == donor].obs['Celltypist:Fetal_Human_Skin:majority_voting'].map(cell_type_mapping).value_counts()
-    donor_cell_type_counts[age] = counts 
+    counts = (
+        adata[adata.obs['experiment_id'] == donor]
+        .obs['Celltypist:Fetal_Human_Skin:majority_voting']
+        .map(cell_type_mapping)
+        .value_counts()
+    )
+    donor_cell_type_counts[age] = counts
 
 donor_cell_type_counts = donor_cell_type_counts.fillna(0).astype(int)
 
+age_group_mapping = {
+    '18 yrs': 'Young', '22 yrs': 'Young', '23 yrs': 'Young',
+    '44 yrs': 'Middle-aged', '47 yrs': 'Middle-aged', '48 yrs': 'Middle-aged',
+    '70 yrs': 'Older', '73 yrs': 'Older', '76 yrs': 'Older'
+}
+
+grouped_counts = donor_cell_type_counts.rename(columns=age_group_mapping)
+
+grouped_counts = grouped_counts.groupby(axis=1, level=0).sum()
+
+age_order = ['Young', 'Middle-aged', 'Older']
+grouped_counts = grouped_counts.reindex(columns=age_order, fill_value=0)
+
+grouped_counts = grouped_counts.astype(int)
+
 def print_neat_table(df):
-    cell_type_width = 22 
-    count_width = 7      
+    """Prints a neatly formatted table for individual donor cell type counts."""
+    cell_type_width = 22  
+    count_width = 7       
 
     title = "Skin Cell Subtypes of Individual Donors"
-    
-    table_width = len(df.columns) * count_width + cell_type_width + 3 * (len(df.columns) - 1)  # Add space between columns
-    title_centered = title.center(table_width)  
+    table_width = len(df.columns) * count_width + cell_type_width + 3 * (len(df.columns) - 1)
+    title_centered = title.center(table_width)
 
-    print("\n" + title_centered)  
-
+    print("\n" + title_centered)
     print("=" * table_width)
 
     header = "Cell Type".ljust(cell_type_width) + " | " + " | ".join(col.rjust(count_width) for col in df.columns)
-    separator = "-" * table_width  # Separator line matches the full width of the table
+    separator = "-" * table_width
+
+    print(separator)
+    print(header)
+    print(separator)
+
+    for idx, row in df.iterrows():
+        row_str = idx.ljust(cell_type_width) + " | " + " | ".join(f"{val:>{count_width}}" for val in row)
+        print(row_str)
+
+    print(separator)
+
+def print_combined_table(df):
+    """Prints a formatted table for grouped donor age counts."""
+    cell_type_width = 30   # Width for cell type column
+    count_width = 25       # Width for age group columns
+
+    title = "Skin Cell Subtypes Across Donor Age Groups"
+    table_width = len(df.columns) * count_width + cell_type_width + 6
+    print("\n" + title.center(table_width))
+    print("=" * table_width)
+
+    header = "Cell Type".ljust(cell_type_width) + " | " + " | ".join(col.center(count_width) for col in df.columns)
+    separator = "-" * table_width
 
     print(separator)
     print(header)
@@ -61,34 +104,7 @@ def print_neat_table(df):
     print(separator)
 
 print_neat_table(donor_cell_type_counts)
-
-# AGE GROUPED SKIN CELL SUBTYPES DATA TABLE
-
-def print_combined_table(df):
-    cell_type_width = 30  
-    count_width = 25     
-
-    df.columns = ["Young(18,22,23 yrs)", "Middle-aged(44,47,48 yrs)", "Older(70,73,76 yrs)"]
-
-    title = "Skin Cell Subtypes Across Donor Age Groups"
-    table_width = len(df.columns) * count_width + cell_type_width + 6  
-    print("\n" + title.center(table_width))
-    print("=" * table_width)
-
-    # Header with consistent spacing
-    header = "Cell Type".ljust(cell_type_width) + " | " + " | ".join(col.center(count_width) for col in df.columns)
-    separator = "-" * table_width
-
-    print(separator)
-    print(header)
-    print(separator)
-
-    for idx, row in df.iterrows():
-        row_str = idx.ljust(cell_type_width) + " | " + " | ".join(f"{val:>{count_width}}" for val in row)
-        print(row_str)
-
-print_combined_table(donor_cell_type_counts)
-
+print_combined_table(grouped_counts)
 
 
 
