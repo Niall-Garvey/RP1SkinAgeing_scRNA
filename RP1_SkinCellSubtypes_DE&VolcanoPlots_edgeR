@@ -372,3 +372,196 @@ degs_list <- list(
 # Combine and export all DEGs
 all_degs <- do.call(rbind, degs_list[!sapply(degs_list, is.null) & sapply(degs_list, nrow) > 0])
 write.csv(all_degs, "FB_DEGs.csv")
+
+
+
+# COMBINING VOLCANO PLOTS PNG & PDF
+# PNG
+
+library(ggrepel)
+library(edgeR)
+library(gridExtra)
+
+# Manual ENSG to gene symbol mappings (for top 5 genes per plot)
+manual_gene_labels <- list(
+  A = c("ENSG00000203875" = "SNHG5", "ENSG00000114115" = "RBP1", "ENSG00000150593" = "PDCD4",
+        "ENSG00000265972" = "TXNIP", "ENSG00000178913" = "TAF7"),
+  B = c("ENSG00000164611" = "PTTG1", "ENSG00000150593" = "PDCD4", "ENSG00000184752" = "NDUFA12",
+        "ENSG00000242125" = "SNHG3", "ENSG00000204592" = "HLA-E"),
+  C = c("ENSG00000008294" = "SPAG9", "ENSG00000158201" = "ABHD3", "ENSG00000180573" = "H2AC6",
+        "ENSG00000109381" = "ELF2", "ENSG00000189060" = "H1-0"),
+  D = c("ENSG00000203875" = "SNHG5", "ENSG00000160888" = "IER2", "ENSG00000143878" = "RHOB",
+        "ENSG00000197329" = "PELI1", "ENSG00000198380" = "GFPT1"),
+  E = c("ENSG00000089041" = "P2RX7", "ENSG00000102786" = "INTS6", "ENSG00000119508" = "NR4A3",
+        "ENSG00000134954" = "ETS1", "ENSG00000151240" = "DIP2C"),
+  F = c("ENSG00000102786" = "INTS6", "ENSG00000196154" = "S100A4", "ENSG00000004864" = "SLC25A13",
+        "ENSG00000119508" = "NR4A3", "ENSG00000073792" = "IGF2BP2"),
+  G = c("ENSG00000104447" = "TRPS1", "ENSG00000187514" = "PTMA", "ENSG00000102804" = "TSC22D1",
+        "ENSG00000008394" = "MGST1", "ENSG00000203875" = "SNHG5"),
+  H = c("ENSG00000171223" = "JUNB", "ENSG00000108551" = "RASD1", "ENSG00000177606" = "JUN",
+        "ENSG00000174738" = "NR1D2", "ENSG00000110852" = "CLEC2B"),
+  I = c("ENSG00000109475" = "RPL34", "ENSG00000241343" = "RPL36A", "ENSG00000187514" = "PTMA",
+        "ENSG00000161970" = "RPL26", "ENSG00000138326" = "RPS24")
+)
+
+# File paths
+files <- list(
+  KC = "/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/dMean__A_fs_KC___phenotype_file.tsv",
+  MC = "/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/dMean__B_fs_Melanocyte___phenotype_file.tsv",
+  FB = "/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/dMean__D_fs_FB___phenotype_file.tsv"
+)
+
+# Donor age mapping
+age_groups <- c(
+  "HRX138216" = "Young_18", "HRX138217" = "Young_22", "HRX138218" = "Young_23",
+  "HRX138219" = "Middle_44", "HRX138220" = "Middle_47", "HRX138221" = "Middle_48",
+  "HRX138222" = "Older_70", "HRX138223" = "Older_73", "HRX138224" = "Older_76"
+)
+
+age_map <- c(
+  "Young_18" = "Young", "Young_22" = "Young", "Young_23" = "Young",
+  "Middle_44" = "Middle", "Middle_47" = "Middle", "Middle_48" = "Middle",
+  "Older_70" = "Older", "Older_73" = "Older", "Older_76" = "Older"
+)
+
+# Volcano plot generator
+make_volcano <- function(counts, label_prefix, manual_labels) {
+  donors <- sub(".*(HRX\\d+).*", "\\1", colnames(counts))
+  colnames(counts) <- age_groups[donors]
+  sample_info <- data.frame(
+    sample = colnames(counts),
+    condition = age_map[colnames(counts)],
+    row.names = colnames(counts)
+  )
+
+  comparisons <- list(
+    c("Young", "Middle"),
+    c("Middle", "Older"),
+    c("Young", "Older")
+  )
+
+  plots <- list()
+
+  for (i in seq_along(comparisons)) {
+    group1 <- comparisons[[i]][1]
+    group2 <- comparisons[[i]][2]
+    keep <- sample_info$condition %in% c(group1, group2)
+    counts_sub <- counts[, keep]
+    info_sub <- sample_info[keep, , drop = FALSE]
+    info_sub$condition <- factor(info_sub$condition, levels = c(group1, group2))
+    design <- model.matrix(~condition, data=info_sub)
+
+    y <- DGEList(counts=counts_sub, group=info_sub$condition)
+    y <- estimateDisp(y, design)
+    fit <- glmQLFit(y, design)
+    res <- glmQLFTest(fit, coef=2)
+    res_table <- topTags(res, n=Inf)$table
+
+    ensg_ids <- rownames(res_table)
+    manual_map <- manual_labels[[LETTERS[length(plots)+1]]]
+    gene_labels <- ifelse(ensg_ids %in% names(manual_map), manual_map[ensg_ids], ensg_ids)
+    res_table$gene <- gene_labels
+
+    # Identify significant hits
+    res_table$signif <- ifelse(res_table$PValue < 0.05, "yes", "no")
+
+    # Select top 5 genes for labeling
+    top_genes <- head(res_table[order(res_table$PValue), ], 5)
+
+    # Plot
+    p <- ggplot(res_table, aes(x = logFC, y = -log10(PValue))) +
+      geom_point(aes(color = signif), alpha = 0.6) +
+      scale_color_manual(values = c("yes" = "red", "no" = "grey")) +
+      geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
+      geom_text_repel(
+        data = top_genes,
+        aes(label = gene),
+        size = 3,
+        box.padding = 0.4,
+        max.overlaps = Inf
+      ) +
+      labs(
+        title = paste0(label_prefix, ": ", group2, " vs ", group1),
+        x = "Log2 Fold Change", y = "-Log10 P-Value"
+      ) +
+      theme(legend.position = "none")
+
+    plots[[i]] <- p
+  }
+
+  return(plots)
+}
+
+# Load data
+kc_counts <- read.table(files$KC, header=TRUE, row.names=1, check.names=FALSE)
+mc_counts <- read.table(files$MC, header=TRUE, row.names=1, check.names=FALSE)
+fb_counts <- read.table(files$FB, header=TRUE, row.names=1, check.names=FALSE)
+
+# Generate plots
+kc_plots <- make_volcano(kc_counts, "Keratinocyte", manual_gene_labels)
+mc_plots <- make_volcano(mc_counts, "Melanocyte", manual_gene_labels)
+fb_plots <- make_volcano(fb_counts, "Fibroblast", manual_gene_labels)
+
+# Save plots
+all_plots <- c(kc_plots, mc_plots, fb_plots)
+labels <- LETTERS[1:length(all_plots)]
+timestamp <- format(Sys.time(), "%Y%m%d%H%M%S")
+output_folder <- "volcano_plots"
+dir.create(output_folder, showWarnings = FALSE)
+
+for (i in seq_along(all_plots)) {
+  output_png <- file.path(output_folder, paste0("volcano_plot_", labels[i], "_", timestamp, ".png"))
+  png(output_png, width = 800, height = 600)
+  print(all_plots[[i]])
+  dev.off()
+  cat("PNG saved as:", output_png, "\n")
+}
+
+
+
+# PDF
+
+library(ggplot2)
+library(cowplot)
+library(png)
+library(grid)
+
+# Letters for plot labels
+letters_vec <- LETTERS[1:9]
+
+# PNG folder path
+base_path <- "volcano_plots/"
+
+# Timestamped filenames
+timestamp <- "20250414192549"
+png_paths <- file.path(base_path, paste0("volcano_plot_", letters_vec, "_", timestamp, ".png"))
+
+# Check for missing files
+missing <- png_paths[!file.exists(png_paths)]
+if (length(missing) > 0) {
+  stop("The following PNG files were not found:\n", paste(missing, collapse = "\n"))
+}
+
+# Load PNGs and convert to ggdraw plots
+png_to_ggdraw <- function(png_file) {
+  img <- readPNG(png_file)
+  g <- rasterGrob(img, interpolate = TRUE)
+  ggdraw() + draw_grob(g)
+}
+
+png_plots <- lapply(png_paths, png_to_ggdraw)
+
+# Save as PDF with improved label positioning
+pdf("volcano_multipanel_A-I_fromPNGs.pdf", width = 16, height = 12)
+plot_grid(
+  plotlist = png_plots,
+  labels = letters_vec,
+  ncol = 3,
+  label_fontface = "bold",
+  label_size = 14,       # Slightly smaller labels
+  label_x = 0.00,        # Push label more to the left
+  label_y = 1.00,        # Push label up
+  hjust = 0,             # Left-align label text
+  vjust = 1              # Top-align label text
+)
+dev.off()
