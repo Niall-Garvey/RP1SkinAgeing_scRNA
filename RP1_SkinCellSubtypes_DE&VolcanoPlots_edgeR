@@ -1,0 +1,125 @@
+# KERATINOCYTE DIFFERENTIAL EXPRESSION IN EDGE_R AND VOLCANO PLOTS
+
+library(edgeR)
+library(ggplot2)
+
+counts <- read.table("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/dMean__A_fs_KC___phenotype_file.tsv", header=TRUE, row.names=1, check.names = FALSE)
+
+colnames(counts) <- c(
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138216_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138217_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138218_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138219_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138220_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138221_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138222_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138223_donor",
+  "Celltypist:Fetal_Human_Skin:majority_voting-B_fs_Melanocyte-dMean_HRX138224_donor"
+)
+
+age_groups <- c(
+  "HRX138216" = "Young_18",
+  "HRX138217" = "Young_22",
+  "HRX138218" = "Young_23",
+  "HRX138219" = "Middle_44",
+  "HRX138220" = "Middle_47",
+  "HRX138221" = "Middle_48",
+  "HRX138222" = "Older_70",
+  "HRX138223" = "Older_73",
+  "HRX138224" = "Older_76"
+)
+
+# Extract donor IDs and simplify age groups
+donors <- sub(".*(HRX\\d+).*", "\\1", colnames(counts))
+colnames(counts) <- age_groups[donors]
+
+age_map <- c(
+  "Young_18" = "Young",
+  "Young_22" = "Young",
+  "Young_23" = "Young",
+  "Middle_44" = "Middle",
+  "Middle_47" = "Middle",
+  "Middle_48" = "Middle",
+  "Older_70" = "Older",
+  "Older_73" = "Older",
+  "Older_76" = "Older"
+)
+
+sample_info <- data.frame(
+  sample = colnames(counts),
+  condition = age_map[colnames(counts)],
+  row.names = colnames(counts)
+)
+
+# Update missing code parts
+sample_names <- c(
+  "Young_18", "Young_22", "Middle_44", "Young_23", "Middle_47", "Middle_48", "Older_70", "Older_73", "Older_76"
+)
+
+group <- factor(age_map[sample_names], levels = c("Young", "Middle", "Older"))
+design <- model.matrix(~ group)
+
+# Create an edgeR object for differential analysis
+y <- DGEList(counts=counts, group=sample_info$condition)
+y <- estimateDisp(y, design)
+fit <- glmQLFit(y, design)
+res <- glmQLFTest(fit, coef=3)  # Compare "Young" vs "Older"
+res_table <- topTags(res, n=Inf)$table
+
+sig_results <- subset(res_table, PValue < 0.05)
+write.csv(sig_results, "sig_results_young_vs_old.csv")
+
+# Function for DE analysis and volcano plotting (only p-value < 0.05)
+run_comparison <- function(group1, group2, label) {
+  keep_samples <- sample_info$condition %in% c(group1, group2)
+  counts_sub <- counts[, keep_samples]
+  sample_info_sub <- sample_info[keep_samples, , drop=FALSE]
+  sample_info_sub$condition <- factor(sample_info_sub$condition, levels = c(group1, group2))
+  
+  design <- model.matrix(~condition, data=sample_info_sub)
+  y <- DGEList(counts=counts_sub, group=sample_info_sub$condition)
+  y <- estimateDisp(y, design)
+  fit <- glmQLFit(y, design)
+  res <- glmQLFTest(fit, coef=2)
+  res_table <- topTags(res, n=Inf)$table
+  
+  # Filter DEGs based on p-value < 0.05
+  degs <- res_table[res_table$PValue < 0.05, ]
+  cat(sprintf("\nComparison: %s vs %s\n", group1, group2))
+  cat(sprintf("Significant DEGs (p-value < 0.05): %d\n", nrow(degs)))
+  
+  if (nrow(degs) > 0) {
+    degs$comparison <- label
+    write.csv(degs, paste0("KC_DEGs_", label, ".csv"))
+  } else {
+    warning(sprintf("No DEGs found for %s vs %s. Skipping CSV save.", group1, group2))
+  }
+
+  # Volcano Plot
+  p <- ggplot(res_table, aes(x = logFC, y = -log10(PValue))) +
+    geom_point(aes(color = ifelse(PValue < 0.05, "Significant", "Not Significant")), alpha = 0.6) +
+    scale_color_manual(values = c("red", "grey")) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") + # Red threshold line
+    theme_minimal() +
+    labs(title = paste("Keratinocytes Volcano Plot:", group2, "vs", group1),
+         x = "Log2 Fold Change", y = "-Log10 Adjusted P-value") +
+    theme(legend.position = "none")
+
+  ggsave(filename = paste0("volcano_KC_", label, ".png"), plot = p)
+
+  return(degs)
+}
+
+# Run comparisons and gather DEGs
+degs_list <- list(
+  run_comparison("Young", "Middle", "Middle_vs_Young"),
+  run_comparison("Middle", "Older", "Older_vs_Middle"),
+  run_comparison("Young", "Older",  "Older_vs_Young")
+)
+
+# Combine non-empty DEG results into a single file
+all_degs <- do.call(rbind, degs_list[!sapply(degs_list, is.null) & sapply(degs_list, nrow) > 0])
+write.csv(all_degs, "KC_DEGs.csv")
+
+
+ 
