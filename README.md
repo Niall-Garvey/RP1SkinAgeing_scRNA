@@ -1,8 +1,9 @@
 # RP1SkinAgeing_scRNA
 
-# Research Project 1: Characterizing Skin Ageing Mechanisms through Multi-Omics Approaches Using scRNA-seq Data
+# Research Project 1 - Mapping Skin Ageing: An scRNA-seq Analysis of Cell Type-Specific Changes in Human Eyelid Across Age Groups
+
 ### Objective:
-The objective of this research project is to analyze an existing scRNA-seq dataset from this Human skin cell atlas dataset - https://ngdc.cncb.ac.cn/aging/landscape?project=Human_Skin to derive novel insights. The project focuses on skin ageing mechanisms using  **single-cell RNA sequencing (scRNA-seq)** 
+The objective of this research project is to analyze an existing scRNA-seq dataset from this Human skin cell atlas dataset - https://ngdc.cncb.ac.cn/aging/landscape?project=Human_Skin of human eyelid. The project focuses on skin ageing changes using  **single-cell RNA sequencing (scRNA-seq)** data and mapping these age-related changes on skin cell subtype variation and function to derive novel insights.
 
 ### Project Tasks:
 1. **Data Analysis**:
@@ -20,7 +21,7 @@ The objective of this research project is to analyze an existing scRNA-seq datas
 ## Project Outline
 
 ### Skin Ageing Mechanisms:
-Skin ageing involves cellular and molecular changes that affect skin structure, resilience, and function. This project aims to provide a comprehensive, multi-omics perspective by analysing **scRNA-seq** data  to uncover gene regulatory networks and protein modifications linked to ageing in human skin.
+Skin ageing involves cellular and molecular changes that affect skin structure, resilience, and function. This project aims to analyse **scRNA-seq** data to map gene function and skin cell subtype variations linked to ageing in human eyelid.
 
 ### scRNA-seq:
 - **Dataset**: A dataset from the study “A Single-Cell Transcriptomic Atlas of Human Skin Aging” has been processed through the **Yascp pipeline**.
