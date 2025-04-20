@@ -95,3 +95,338 @@ if (any(sapply(gene_lists, length) > 0)) {
 } else {
   cat("🚫 Not enough genes for UpSet plot\n")
 }
+
+
+
+# MELANOCYTES: GENE ONTOLOGY ENRICHMENT ANALYSIS BAR PLOTS
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(dplyr)
+library(tidyr)
+library(UpSetR)
+library(ggplot2)  # For customizing plots
+
+degs <- read.csv("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/Melanocyte_DEGs.csv")
+
+cat("Number of rows in DEGs data:", nrow(degs), "\n")
+
+# Split comparisons
+melanocyte_middle_vs_young <- subset(degs, comparison == "Middle_vs_Young" & PValue < 0.05)
+melanocyte_older_vs_middle <- subset(degs, comparison == "Older_vs_Middle" & PValue < 0.05)
+melanocyte_older_vs_young  <- subset(degs, comparison == "Older_vs_Young"  & PValue < 0.05)
+
+cat("Middle vs Young:", nrow(melanocyte_middle_vs_young), "\n")
+cat("Older vs Middle:", nrow(melanocyte_older_vs_middle), "\n")
+cat("Older vs Young:", nrow(melanocyte_older_vs_young), "\n")
+
+# Gene conversion function
+convert_to_entrez <- function(gene_df) {
+  gene_ids <- unique(gene_df$X)
+  mapped <- bitr(gene_ids, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+  cat("Mapped:", nrow(mapped), "\n")
+  return(mapped$ENTREZID)
+}
+
+# Convert gene IDs for melanocyte data
+entrez_melanocyte_middle_vs_young <- convert_to_entrez(melanocyte_middle_vs_young)
+entrez_melanocyte_older_vs_middle <- convert_to_entrez(melanocyte_older_vs_middle)
+entrez_melanocyte_older_vs_young  <- convert_to_entrez(melanocyte_older_vs_young)
+
+# Enrichment function (safe)
+go_enrich <- function(entrez_ids) {
+  if (length(entrez_ids) == 0) return(NULL)
+  enrichGO(gene = entrez_ids,
+           OrgDb = org.Hs.eg.db,
+           keyType = "ENTREZID",
+           ont = "BP",
+           pAdjustMethod = "BH",
+           qvalueCutoff = 0.05,
+           readable = TRUE)
+}
+
+# Run GO enrichment for melanocyte data
+go_melanocyte_middle_vs_young <- go_enrich(entrez_melanocyte_middle_vs_young)
+go_melanocyte_older_vs_middle <- go_enrich(entrez_melanocyte_older_vs_middle)
+go_melanocyte_older_vs_young  <- go_enrich(entrez_melanocyte_older_vs_young)
+
+# Improved plot function with larger plot area and wrapped labels
+safe_plot <- function(go_obj, comparison_name) {
+  if (!is.null(go_obj) && nrow(go_obj@result) > 0) {
+    p <- barplot(go_obj, 
+                 showCategory = 10, 
+                 title = paste("Melanocyte:", comparison_name))
+    
+    # Adjust plot margins for more space
+    p <- p + theme(
+      axis.text.y = element_text(size = 6),        # smaller y-axis text
+      axis.text.x = element_text(size = 6, angle = 45, hjust = 1),  # Rotate x-axis text
+      plot.title = element_text(size = 10, face = "bold"),  # smaller title
+      plot.margin = margin(10, 10, 10, 20)  # Increase right margin to avoid label clipping
+    )
+    
+    print(p)
+  } else {
+    cat("🚫 Skipping plot for", comparison_name, "\n")
+  }
+}
+
+# Plot results for melanocytes with adjusted titles and font size
+safe_plot(go_melanocyte_middle_vs_young, "Middle vs Young")
+safe_plot(go_melanocyte_older_vs_middle, "Older vs Middle")
+safe_plot(go_melanocyte_older_vs_young, "Older vs Young")
+
+# Optionally: UpSet plot of overlapping gene sets for melanocytes
+gene_lists <- list(
+  Middle_vs_Young = entrez_melanocyte_middle_vs_young,
+  Older_vs_Middle = entrez_melanocyte_older_vs_middle,
+  Older_vs_Young  = entrez_melanocyte_older_vs_young
+)
+
+# Only plot if there is content
+if (any(sapply(gene_lists, length) > 0)) {
+  upset(fromList(gene_lists), order.by = "freq", sets.bar.color = "#56B4E9")
+} else {
+  cat("🚫 Not enough genes for UpSet plot\n")
+}
+
+
+# FIBROBLASTS: GENE ONTOLOGY ENRICHMENT ANALYSIS BAR PLOTS
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(dplyr)
+library(tidyr)
+library(UpSetR)
+library(ggplot2)  # For customizing plots
+
+degs <- read.csv("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/FB_DEGs.csv")
+
+cat("Number of rows in DEGs data:", nrow(degs), "\n")
+
+# Split comparisons
+fb_middle_vs_young <- subset(degs, comparison == "Middle_vs_Young" & PValue < 0.05)
+fb_older_vs_middle <- subset(degs, comparison == "Older_vs_Middle" & PValue < 0.05)
+fb_older_vs_young  <- subset(degs, comparison == "Older_vs_Young"  & PValue < 0.05)
+
+cat("Middle vs Young:", nrow(fb_middle_vs_young), "\n")
+cat("Older vs Middle:", nrow(fb_older_vs_middle), "\n")
+cat("Older vs Young:", nrow(fb_older_vs_young), "\n")
+
+# Gene conversion function
+convert_to_entrez <- function(gene_df) {
+  gene_ids <- unique(gene_df$X)
+  mapped <- bitr(gene_ids, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+  cat("Mapped:", nrow(mapped), "\n")
+  return(mapped$ENTREZID)
+}
+
+# Convert gene IDs for fibroblast data
+entrez_fb_middle_vs_young <- convert_to_entrez(fb_middle_vs_young)
+entrez_fb_older_vs_middle <- convert_to_entrez(fb_older_vs_middle)
+entrez_fb_older_vs_young  <- convert_to_entrez(fb_older_vs_young)
+
+# Enrichment function (safe)
+go_enrich <- function(entrez_ids) {
+  if (length(entrez_ids) == 0) return(NULL)
+  enrichGO(gene = entrez_ids,
+           OrgDb = org.Hs.eg.db,
+           keyType = "ENTREZID",
+           ont = "BP",
+           pAdjustMethod = "BH",
+           qvalueCutoff = 0.05,
+           readable = TRUE)
+}
+
+# Run GO enrichment for fibroblast data
+go_fb_middle_vs_young <- go_enrich(entrez_fb_middle_vs_young)
+go_fb_older_vs_middle <- go_enrich(entrez_fb_older_vs_middle)
+go_fb_older_vs_young  <- go_enrich(entrez_fb_older_vs_young)
+
+# Improved plot function with horizontal bars and better spacing
+safe_plot <- function(go_obj, comparison_name, show_more_categories = FALSE) {
+  if (!is.null(go_obj) && nrow(go_obj@result) > 0) {
+    # Set the number of categories to display based on comparison
+    categories_to_show <- ifelse(show_more_categories, 20, 10)  # Show 20 categories for Middle vs Young
+    
+    p <- barplot(go_obj, 
+                 showCategory = categories_to_show,  # Dynamic number of categories
+                 title = paste("Fibroblast:", comparison_name),
+                 horizontal = TRUE)  # Use horizontal bars
+    
+    # Adjust plot margins for better spacing
+    p <- p + theme(
+      axis.text.y = element_text(size = 6),        # smaller y-axis text
+      axis.text.x = element_text(size = 6),        # smaller x-axis text
+      plot.title = element_text(size = 10, face = "bold"),  # smaller title
+      plot.margin = margin(10, 10, 10, 20),  # Increase margin to avoid label clipping
+      axis.title.x = element_text(size = 8),    # Smaller x-axis title
+      axis.title.y = element_text(size = 8)     # Smaller y-axis title
+    )
+    
+    # Print the plot
+    print(p)
+  } else {
+    cat("🚫 Skipping plot for", comparison_name, "\n")
+  }
+}
+
+# Plot results for fibroblasts with horizontal bars and adjusted font size
+safe_plot(go_fb_middle_vs_young, "Middle vs Young", show_more_categories = TRUE)  # Show more categories here
+safe_plot(go_fb_older_vs_middle, "Older vs Middle")
+safe_plot(go_fb_older_vs_young, "Older vs Young")
+
+# Optionally: UpSet plot of overlapping gene sets for fibroblasts
+gene_lists <- list(
+  Middle_vs_Young = entrez_fb_middle_vs_young,
+  Older_vs_Middle = entrez_fb_older_vs_middle,
+  Older_vs_Young  = entrez_fb_older_vs_young
+)
+
+# Only plot if there is content
+if (any(sapply(gene_lists, length) > 0)) {
+  upset(fromList(gene_lists), order.by = "freq", sets.bar.color = "#56B4E9")
+} else {
+  cat("🚫 Not enough genes for UpSet plot\n")
+}
+
+
+# COMBINE GO PLOTS INTO PDF
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(dplyr)
+library(tidyr)
+library(UpSetR)
+library(ggplot2)  # For customizing plots
+library(gridExtra) # For arranging multiple plots in a grid
+
+degs <- read.csv("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/KC_DEGs.csv")
+cat("Number of rows in DEGs data:", nrow(degs), "\n")
+
+# Split comparisons for keratinocytes
+kc_middle_vs_young <- subset(degs, comparison == "Middle_vs_Young" & PValue < 0.05)
+kc_older_vs_middle <- subset(degs, comparison == "Older_vs_Middle" & PValue < 0.05)
+kc_older_vs_young  <- subset(degs, comparison == "Older_vs_Young"  & PValue < 0.05)
+
+# Gene conversion function
+convert_to_entrez <- function(gene_df) {
+  gene_ids <- unique(gene_df$X)
+  mapped <- bitr(gene_ids, fromType = "ENSEMBL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+  return(mapped$ENTREZID)
+}
+
+# Convert gene IDs for keratinocytes
+entrez_middle_vs_young <- convert_to_entrez(kc_middle_vs_young)
+entrez_older_vs_middle <- convert_to_entrez(kc_older_vs_middle)
+entrez_older_vs_young  <- convert_to_entrez(kc_older_vs_young)
+
+# Enrichment function
+go_enrich <- function(entrez_ids) {
+  if (length(entrez_ids) == 0) return(NULL)
+  enrichGO(gene = entrez_ids,
+           OrgDb = org.Hs.eg.db,
+           keyType = "ENTREZID",
+           ont = "BP",
+           pAdjustMethod = "BH",
+           qvalueCutoff = 0.05,
+           readable = TRUE)
+}
+
+# Run GO enrichment for keratinocytes
+go_middle_vs_young <- go_enrich(entrez_middle_vs_young)
+go_older_vs_middle <- go_enrich(entrez_older_vs_middle)
+go_older_vs_young  <- go_enrich(entrez_older_vs_young)
+
+# Improved plot function for keratinocytes with better margins and smaller p-value bar
+safe_plot <- function(go_obj, comparison_name, label) {
+  if (!is.null(go_obj) && nrow(go_obj@result) > 0) {
+    p <- barplot(go_obj, 
+                 showCategory = 10, 
+                 title = paste("Keratinocyte:", comparison_name))
+    
+    # Adjust plot margins for more space and smaller font sizes for labels and title
+    p <- p + theme(
+      axis.text.y = element_text(size = 5),        # smaller y-axis text
+      axis.text.x = element_text(size = 5, angle = 45, hjust = 1),  # Rotate x-axis text
+      plot.title = element_text(size = 8, face = "bold"),  # smaller title
+      plot.margin = margin(10, 10, 10, 20)  # Increase right margin to avoid label clipping
+    )
+    
+    # Reduce the width of the bars and adjust spacing for the p-value bar
+    p <- p + coord_cartesian(xlim = c(0, max(go_obj@result$pvalue))) + 
+             geom_bar(stat = "identity", width = 0.7)  # Reduce bar width to 0.7 for more space
+    
+    # Add label to the plot
+    p <- p + labs(tag = label)  # Add the label
+    
+    return(p)
+  } else {
+    return(NULL)
+  }
+}
+
+# Create plots for keratinocytes
+plot_kc_1 <- safe_plot(go_middle_vs_young, "Middle vs Young", "A")
+plot_kc_2 <- safe_plot(go_older_vs_middle, "Older vs Middle", "B")
+plot_kc_3 <- safe_plot(go_older_vs_young, "Older vs Young", "C")
+
+# Load DEGs data for melanocytes
+degs <- read.csv("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/Melanocyte_DEGs.csv")
+
+# Split comparisons for melanocytes
+melanocyte_middle_vs_young <- subset(degs, comparison == "Middle_vs_Young" & PValue < 0.05)
+melanocyte_older_vs_middle <- subset(degs, comparison == "Older_vs_Middle" & PValue < 0.05)
+melanocyte_older_vs_young  <- subset(degs, comparison == "Older_vs_Young"  & PValue < 0.05)
+
+# Convert gene IDs for melanocytes
+entrez_melanocyte_middle_vs_young <- convert_to_entrez(melanocyte_middle_vs_young)
+entrez_melanocyte_older_vs_middle <- convert_to_entrez(melanocyte_older_vs_middle)
+entrez_melanocyte_older_vs_young  <- convert_to_entrez(melanocyte_older_vs_young)
+
+# Run GO enrichment for melanocytes
+go_melanocyte_middle_vs_young <- go_enrich(entrez_melanocyte_middle_vs_young)
+go_melanocyte_older_vs_middle <- go_enrich(entrez_melanocyte_older_vs_middle)
+go_melanocyte_older_vs_young  <- go_enrich(entrez_melanocyte_older_vs_young)
+
+# Create plots for melanocytes
+plot_melanocyte_1 <- safe_plot(go_melanocyte_middle_vs_young, "Middle vs Young", "D")
+plot_melanocyte_2 <- safe_plot(go_melanocyte_older_vs_middle, "Older vs Middle", "E")
+plot_melanocyte_3 <- safe_plot(go_melanocyte_older_vs_young, "Older vs Young", "F")
+
+# Load DEGs data for fibroblasts
+degs <- read.csv("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/FB_DEGs.csv")
+
+# Split comparisons for fibroblasts
+fb_middle_vs_young <- subset(degs, comparison == "Middle_vs_Young" & PValue < 0.05)
+fb_older_vs_middle <- subset(degs, comparison == "Older_vs_Middle" & PValue < 0.05)
+fb_older_vs_young  <- subset(degs, comparison == "Older_vs_Young"  & PValue < 0.05)
+
+# Convert gene IDs for fibroblasts
+entrez_fb_middle_vs_young <- convert_to_entrez(fb_middle_vs_young)
+entrez_fb_older_vs_middle <- convert_to_entrez(fb_older_vs_middle)
+entrez_fb_older_vs_young  <- convert_to_entrez(fb_older_vs_young)
+
+# Run GO enrichment for fibroblasts
+go_fb_middle_vs_young <- go_enrich(entrez_fb_middle_vs_young)
+go_fb_older_vs_middle <- go_enrich(entrez_fb_older_vs_middle)
+go_fb_older_vs_young  <- go_enrich(entrez_fb_older_vs_young)
+
+# Create plots for fibroblasts
+plot_fb_1 <- safe_plot(go_fb_middle_vs_young, "Middle vs Young", "G")
+plot_fb_2 <- safe_plot(go_fb_older_vs_middle, "Older vs Middle", "H")
+plot_fb_3 <- safe_plot(go_fb_older_vs_young, "Older vs Young", "I")
+
+# Start saving the multipanel plot as a PDF
+pdf("/mnt/iusers01/fatpou01/bmh01/msc-bioinf-2024-2025/z45775ng/multipanel_GO_enrichment_plots.pdf", width = 10, height = 10)
+
+# Arrange all plots into one multipanel grid
+grid.arrange(
+  plot_kc_1, plot_kc_2, plot_kc_3, 
+  plot_melanocyte_1, plot_melanocyte_2, plot_melanocyte_3, 
+  plot_fb_1, plot_fb_2, plot_fb_3,
+  ncol = 3, nrow = 3
+)
+
+# Close the PDF device
+dev.off()
