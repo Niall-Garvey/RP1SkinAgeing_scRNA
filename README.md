@@ -3,7 +3,7 @@
 # Research Project 1 - Mapping Skin Ageing: An scRNA-seq Analysis of Cell Type-Specific Changes in Human Eyelid Across Age Groups
 
 ### Objective:
-The objective of this research project is to analyze an existing scRNA-seq dataset from this Human skin cell atlas dataset - https://ngdc.cncb.ac.cn/aging/landscape?project=Human_Skin, in this case human eyelid from 9 donors aged 18-76 years old. The project focuses on skin ageing changes using  **single-cell RNA sequencing (scRNA-seq)** data and mapping these age-related changes on skin cell subtype variation and function via gene enrichment (GO) analysis to derive novel insights.
+The objective of this research project is to analyze an existing scRNA-seq dataset from this Human skin cell atlas dataset - https://ngdc.cncb.ac.cn/aging/landscape?project=Human_Skin, in this case human eyelid from 9 donors aged 18-76 years old. The project focuses on skin ageing changes using  **single-cell RNA sequencing (scRNA-seq)** data and mapping these age-related changes on skin cell subtype variation and function via edgeR Differential expression and gene enrichment (GO) analysis to derive novel insights.
 
 ### Project Tasks:
 1. **Data Analysis**:
